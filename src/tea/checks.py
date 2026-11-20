@@ -47,9 +47,45 @@ def stuck_sensor(df):                     # owner: Tanish
     return {"present": None, "column": None, "start_date": None, "end_date": None}
 
 
+def _clean_label(value):
+    """lower-case, remove spaces at the ends and a trailing dot: ' MON. ' -> 'mon'."""
+    return str(value).strip().lower().rstrip(".")
+
+
+def _merge_abbreviations(labels):
+    """Map each label to the longest label it is a prefix of: 'mon' -> 'monsoon'."""
+    labels = sorted(set(labels), key=len, reverse=True)  # longest first
+    mapping = {}
+    for label in labels:
+        full = label
+        for other in labels:
+            if len(other) > len(full) and other.startswith(label):
+                full = other
+                break
+        mapping[label] = full
+    return mapping
+
+
 def spelling_variants(df):                # owner: Prashant
-    # TODO: text columns; number of real categories after cleaning
-    return {"present": None, "column": None, "true_levels": None}
+    """Find a text column where one category is spelled in several ways.
+
+    Steps: (1) look at every text column (not record_id / date),
+    (2) clean each value (case, spaces, trailing dot),
+    (3) join abbreviations to the full word,
+    (4) if the number of different spellings is bigger than the number of
+        real categories, this column has spelling variants.
+    """
+    skip = {"record_id", "date"}
+    for col in df.columns:
+        if col in skip or not (df[col].dtype == object or str(df[col].dtype) == "str"):
+            continue
+        raw_levels = df[col].dropna().unique()
+        cleaned = [_clean_label(v) for v in raw_levels]
+        mapping = _merge_abbreviations(cleaned)
+        true_levels = len({mapping[c] for c in cleaned})
+        if len(raw_levels) > true_levels:
+            return {"present": True, "column": col, "true_levels": true_levels}
+    return {"present": False, "column": None, "true_levels": None}
 
 
 def run_all():
