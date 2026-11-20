@@ -6,36 +6,34 @@ group_id: "G253"          # your group id, e.g. "G042"
 problem_id: "MP210"
 
 data_issues:
-  # For each of the 7 kinds: present: true or false.
-  # If present is false, leave the other values as null.
   leaking_column:
-    present: null
-    column: null           # the column that must not be used as a feature
+    present: true
+    column: kg_weighed_at_factory
   unit_mixup:
-    present: null
-    column: null           # the column recorded in a different unit
-    group_value: null      # the value of section whose rows are affected
-    factor: null           # wrong value = right value x factor
+    present: true
+    column: rain_mm_week
+    group_value: Upper Garden
+    factor: 0.1
   sentinel_value:
-    present: null
+    present: false
     column: null
-    value: null            # the special number typed instead of a blank
-    count: null            # how many rows have it
+    value: null
+    count: null
   duplicate_rows:
-    present: null
-    count: null            # number of EXTRA copies (rows you would delete)
+    present: false
+    count: null
   stuck_sensor:
-    present: null
+    present: false
     column: null
-    start_date: null       # first date with the stuck value, YYYY-MM-DD
-    end_date: null         # last date with the stuck value, YYYY-MM-DD
+    start_date: null
+    end_date: null
   target_typos:
-    present: null
-    count: null            # rows whose target was typed 10 times too big
+    present: false
+    count: null
   spelling_variants:
-    present: null
-    column: null
-    true_levels: null      # how many real categories there are after cleaning
+    present: true
+    column: flush
+    true_levels: 3
 
 tracking:
   experiment_name: null
