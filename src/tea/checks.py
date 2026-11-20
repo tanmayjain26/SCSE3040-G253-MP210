@@ -3,6 +3,7 @@
 Each function takes the raw DataFrame and returns a dict whose keys match
 the matching block in reports/findings.yaml. Owner is noted per function.
 """
+import numpy as np
 import pandas as pd
 import yaml
 
