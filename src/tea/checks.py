@@ -82,13 +82,49 @@ def sentinel_value(df):                   # owner: Shyam
 
 
 def duplicate_rows(df):                   # owner: Tanish
-    # TODO: number of EXTRA copies
-    return {"present": None, "count": None}
+    """Count the EXTRA copies of rows (rows you would delete).
+
+    A record typed twice may get a new record_id, so we compare every column
+    except record_id. df.duplicated() marks the 2nd, 3rd... copy as True and
+    leaves the first copy False, so its sum is the number of extra copies.
+    """
+    other_cols = [c for c in df.columns if c != "record_id"]
+    count = int(df.duplicated(subset=other_cols).sum())
+    if count == 0:
+        return {"present": False, "count": None}
+    return {"present": True, "count": count}
 
 
 def stuck_sensor(df):                     # owner: Tanish
-    # TODO: sort by date; long run of one identical value in a column
-    return {"present": None, "column": None, "start_date": None, "end_date": None}
+    """Find a sensor column that sent the same reading for weeks.
+
+    Idea: sort by date, then for each sensor column find the longest run of
+    consecutive rows with the same value. A normal column changes almost every
+    row, so a run that lasts 7 days or more is a stuck sensor.
+    """
+    sensor_cols = ["worker_exp_yr", "rain_mm_week", "slope_deg",
+                   "temp_c", "bush_age_yr", "hours_worked"]
+    data = df.copy()
+    data["date"] = pd.to_datetime(data["date"])
+    data = data.sort_values("date", kind="stable")
+
+    best = None  # (days, column, start_date, end_date)
+    for col in sensor_cols:
+        if col not in data.columns:
+            continue
+        run_id = (data[col] != data[col].shift()).cumsum()   # new id when value changes
+        runs = data.groupby(run_id).agg(start=("date", "min"), end=("date", "max"),
+                                        rows=(col, "size"))
+        runs["days"] = (runs["end"] - runs["start"]).dt.days + 1
+        longest = runs.sort_values("days", ascending=False).iloc[0]
+        if longest["days"] >= 7 and (best is None or longest["days"] > best[0]):
+            best = (longest["days"], col, longest["start"], longest["end"])
+
+    if best is None:
+        return {"present": False, "column": None, "start_date": None, "end_date": None}
+    _, col, start, end = best
+    return {"present": True, "column": col,
+            "start_date": start.strftime("%Y-%m-%d"), "end_date": end.strftime("%Y-%m-%d")}
 
 
 def _clean_label(value):
