@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
+TARGET = "kg_per_worker"
 
 def load_params(path="params.yaml"):
     with open(path) as f:
@@ -19,13 +20,49 @@ def load_train(params=None):
 
 
 def leaking_column(df, holdout):          # owner: Samya
-    # TODO: columns missing from holdout; which one tracks the target?
-    return {"present": None, "column": None}
+    """Find a column that is only known AFTER the event (it leaks the target).
+
+    Two clues: (1) the column is missing from holdout_features.csv, because at
+    prediction time we do not have it, and (2) it agrees almost exactly with
+    the target. We keep numeric columns that are in train but not in holdout
+    (not the target itself) and pick the one most correlated with the target.
+    """
+    missing = [c for c in df.columns if c not in holdout.columns and c != TARGET]
+    best = None
+    for col in missing:
+        if not pd.api.types.is_numeric_dtype(df[col]):
+            continue
+        corr = abs(df[col].corr(df[TARGET], method="spearman"))  # rank corr ignores typos
+        if corr > 0.95 and (best is None or corr > best[1]):
+            best = (col, corr)
+    if best is None:
+        return {"present": False, "column": None}
+    return {"present": True, "column": best[0]}
+
 
 
 def target_typos(df):                     # owner: Samya
-    # TODO: targets ~10x too big; return how many
-    return {"present": None, "count": None}
+    """Count targets that were typed 10 times too big (an extra zero).
+
+    Idea: the leaking column (kg weighed at the factory) holds the true weight,
+    so kg_per_worker / leaking column should be close to 1. A typo makes the
+    ratio about 10. We count rows with a ratio above 5.
+    Without a reference column we fall back to the gap idea: values above
+    3 x the 99th percentile of the lower 95 % of the data.
+    """
+    holdout_cols = ["worker_exp_yr", "rain_mm_week", "slope_deg", "temp_c",
+                    "bush_age_yr", "hours_worked", "flush", "section", "date", "record_id"]
+    reference = [c for c in df.columns if c not in holdout_cols and c != TARGET]
+    if reference:
+        ratio = df[TARGET] / df[reference[0]]
+        count = int((ratio > 5).sum())
+    else:
+        sorted_y = df[TARGET].sort_values()
+        limit = 3 * sorted_y.iloc[: int(len(sorted_y) * 0.95)].max()
+        count = int((df[TARGET] > limit).sum())
+    if count == 0:
+        return {"present": False, "count": None}
+    return {"present": True, "count": count}
 
 
 def unit_mixup(df):                       # owner: Shyam
