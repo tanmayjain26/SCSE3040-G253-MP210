@@ -2,3 +2,27 @@ data:
   train: data/raw/train.csv
   later: data/raw/later.csv
   holdout: data/raw/holdout_features.csv
+
+mlflow:
+  tracking_uri: sqlite:///mlflow.db
+  experiment_name: tea-leaf-plucking
+  registered_model_name: tea-plucking-model
+
+split:
+  test_size: 0.2
+  random_state: 42
+
+# every entry is one MLflow run (one setting to try)
+runs:
+  - name: ridge_alpha_1
+    model: ridge
+    params: {alpha: 1.0}
+  - name: random_forest_100
+    model: random_forest
+    params: {n_estimators: 100, max_depth: 8, random_state: 42}
+  - name: random_forest_300
+    model: random_forest
+    params: {n_estimators: 300, max_depth: 12, random_state: 42}
+  - name: gradient_boosting
+    model: gradient_boosting
+    params: {n_estimators: 200, learning_rate: 0.05, max_depth: 3, random_state: 42}
