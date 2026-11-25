@@ -32,7 +32,7 @@ def leaking_column(df, holdout):          # owner: Samya
     for col in missing:
         if not pd.api.types.is_numeric_dtype(df[col]):
             continue
-        corr = abs(df[col].corr(df[TARGET], method="spearman"))  # rank corr ignores typos
+        corr = abs(df[col].rank().corr(df[TARGET].rank()))  # rank correlation (Spearman) ignores typos
         if corr > 0.95 and (best is None or corr > best[1]):
             best = (col, corr)
     if best is None:
