@@ -17,3 +17,39 @@
     python -m venv .venv
     pip install -r requirements.txt
     dvc pull   # or copy the original CSVs into data/raw/
+
+## Pipeline overview
+
+| Part | Where |
+|---|---|
+| Data versioning (DVC) | `data/raw/*.dvc` |
+| Seven data checks | `src/tea/checks.py` |
+| Cleaning | `src/tea/clean.py` |
+| Model code | `src/tea/train.py` |
+| MLflow training and registry | `src/tea/run_training.py`, `mlflow.db` |
+| API service | `app/main.py` |
+| Tests | `tests/` |
+| Docker | `Dockerfile` |
+| CI | `.github/workflows/ci.yml` |
+| Kubernetes | `k8s/deployment.yaml`, `k8s/service.yaml` |
+
+## How to run
+
+    pip install -r requirements.txt
+    python -m pytest                              # run the tests
+    python src/tea/checks.py                      # run the seven data checks
+    python src/tea/run_training.py                # train, log to MLflow, register @champion
+    uvicorn app.main:app --port 8000              # start the API
+
+## API
+
+`POST /predict` with the fields `worker_exp_yr`, `rain_mm_week`, `slope_deg`, `temp_c`,
+`bush_age_yr`, `hours_worked`, `flush`, `section`. Rules from the client: `worker_exp_yr`
+above 55 and `bush_age_yr` below 1.5 are rejected with status 422.
+`GET /health` returns `{"status": "ok"}`.
+
+## Docker and Kubernetes
+
+    docker build -t mp210-api:1.0 .
+    docker run -p 8000:8000 mp210-api:1.0
+    kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml    # 3 replicas, service port 80 -> 8000
